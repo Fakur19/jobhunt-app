@@ -10,6 +10,7 @@ import {
   where, 
   addDoc, 
   updateDoc,
+  deleteDoc,
   getDocFromServer
 } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType } from '../firebase';
@@ -23,6 +24,8 @@ interface JobContextType {
   updateApplication: (id: string, app: Partial<Application>) => Promise<void>;
   offers: Offer[];
   addOffer: (offer: Omit<Offer, 'id'>) => Promise<void>;
+  deleteOffer: (id: string) => Promise<void>;
+  updateOffer: (id: string, offer: Partial<Offer>) => Promise<void>;
   resume: ResumeData;
   updateResume: (data: Partial<ResumeData>) => Promise<void>;
 }
@@ -132,7 +135,21 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!user) return;
     const path = 'applications';
     try {
-      await addDoc(collection(db, path), { ...app, userId: user.uid });
+      const docRef = await addDoc(collection(db, path), { ...app, userId: user.uid });
+      
+      // If status is Offer, automatically create an offer entry
+      if (app.status === 'Offer') {
+        await addOffer({
+          applicationId: docRef.id,
+          jobTitle: app.jobTitle,
+          company: app.company,
+          type: 'Offer',
+          status: 'Pending',
+          stage: 'Offer Received',
+          date: new Date().toISOString().split('T')[0],
+          notes: app.jobDescription,
+        });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
     }
@@ -143,6 +160,32 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const path = `applications/${id}`;
     try {
       await updateDoc(doc(db, 'applications', id), app);
+      
+      // If status changed to Offer, automatically create an offer entry if it doesn't exist
+      if (app.status === 'Offer') {
+        const existingOffer = offers.find(o => o.applicationId === id);
+        if (!existingOffer) {
+          const fullApp = applications.find(a => a.id === id);
+          if (fullApp) {
+            await addOffer({
+              applicationId: id,
+              jobTitle: fullApp.jobTitle,
+              company: fullApp.company,
+              type: 'Offer',
+              status: 'Pending',
+              stage: 'Offer Received',
+              date: new Date().toISOString().split('T')[0],
+              notes: fullApp.jobDescription,
+            });
+          }
+        }
+      } else if (app.status && (app.status as string) !== 'Offer') {
+        // If status changed AWAY from Offer, remove the auto-generated offer
+        const existingOffer = offers.find(o => o.applicationId === id);
+        if (existingOffer) {
+          await deleteOffer(existingOffer.id);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
@@ -152,9 +195,29 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!user) return;
     const path = 'offers';
     try {
-      await addDoc(collection(db, path), { ...offer, userId: user.uid });
+      await addDoc(collection(db, path), { ...offer, userId: user.uid, status: offer.status || 'Pending' });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  };
+
+  const deleteOffer = async (id: string) => {
+    if (!user) return;
+    const path = `offers/${id}`;
+    try {
+      await deleteDoc(doc(db, 'offers', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  };
+
+  const updateOffer = async (id: string, offer: Partial<Offer>) => {
+    if (!user) return;
+    const path = `offers/${id}`;
+    try {
+      await updateDoc(doc(db, 'offers', id), offer);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
     }
   };
 
@@ -177,6 +240,8 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updateApplication,
       offers,
       addOffer,
+      deleteOffer,
+      updateOffer,
       resume,
       updateResume,
     }}>

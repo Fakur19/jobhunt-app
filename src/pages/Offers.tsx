@@ -32,10 +32,34 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 
 const Offers = () => {
-  const { offers, addOffer } = useJob();
+  const { offers, addOffer, updateOffer, updateApplication } = useJob();
   const [isAdding, setIsAdding] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
+
+  const handleAcceptOffer = async (offer: any) => {
+    try {
+      await updateOffer(offer.id, { status: 'Accepted' });
+      if (offer.applicationId) {
+        await updateApplication(offer.applicationId, { status: 'Hired' });
+      }
+      toast.success('Congratulations on your new job!');
+    } catch (error) {
+      toast.error('Failed to update offer status.');
+    }
+  };
+
+  const handleDeclineOffer = async (offer: any) => {
+    try {
+      await updateOffer(offer.id, { status: 'Declined' });
+      if (offer.applicationId) {
+        await updateApplication(offer.applicationId, { status: 'Offer Declined' });
+      }
+      toast.info('Offer declined.');
+    } catch (error) {
+      toast.error('Failed to update offer status.');
+    }
+  };
 
   const [formData, setFormData] = useState({
     jobTitle: '',
@@ -52,7 +76,7 @@ const Offers = () => {
     
     try {
       const cheatSheet = await generateInterviewCheatSheet(formData.jobTitle, formData.company, formData.notes);
-      await addOffer({ ...formData, cheatSheet });
+      await addOffer({ ...formData, cheatSheet, status: 'Pending' });
       toast.success('Offer/Invite added and interview cheat sheet generated!');
       setIsAdding(false);
       setFormData({
@@ -65,7 +89,7 @@ const Offers = () => {
       });
     } catch (error) {
       toast.error('Failed to generate cheat sheet, but record was saved.');
-      await addOffer(formData);
+      await addOffer({ ...formData, status: 'Pending' });
       setIsAdding(false);
     } finally {
       setIsGenerating(false);
@@ -178,6 +202,7 @@ const Offers = () => {
                 <TableHead>Job Title</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Stage</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -195,18 +220,49 @@ const Offers = () => {
                       {offer.type}
                     </div>
                   </TableCell>
+                  <TableCell>
+                    <div className={`inline-flex px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      offer.status === 'Accepted' ? 'bg-emerald-100 text-emerald-700' : 
+                      offer.status === 'Declined' ? 'bg-red-100 text-red-700' : 
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {offer.status || 'Pending'}
+                    </div>
+                  </TableCell>
                   <TableCell>{offer.stage}</TableCell>
                   <TableCell>{offer.date}</TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="gap-2"
-                      onClick={() => setSelectedOffer(offer)}
-                    >
-                      <FileText className="w-4 h-4" />
-                      Prep Notes
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      {offer.type === 'Offer' && offer.status === 'Pending' && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                            onClick={() => handleAcceptOffer(offer)}
+                          >
+                            Accept
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            onClick={() => handleDeclineOffer(offer)}
+                          >
+                            Decline
+                          </Button>
+                        </>
+                      )}
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="gap-2"
+                        onClick={() => setSelectedOffer(offer)}
+                      >
+                        <FileText className="w-4 h-4" />
+                        Prep Notes
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

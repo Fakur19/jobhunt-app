@@ -40,6 +40,14 @@ const Applications = () => {
   const [isTailoring, setIsTailoring] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [viewingResume, setViewingResume] = useState<Application | null>(null);
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+
+  const activeStatuses: ApplicationStatus[] = ['Applied', 'Interviewing', 'Offer'];
+  const filteredApps = applications.filter(app => 
+    activeTab === 'active' 
+      ? activeStatuses.includes(app.status)
+      : !activeStatuses.includes(app.status)
+  );
 
   const [formData, setFormData] = useState({
     jobTitle: '',
@@ -118,7 +126,31 @@ const Applications = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-slate-900">All Applications</h3>
+        <div className="flex items-center gap-6">
+          <h3 className="text-lg font-semibold text-slate-900">Applications</h3>
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button 
+              onClick={() => setActiveTab('active')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === 'active' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Active ({applications.filter(a => activeStatuses.includes(a.status)).length})
+            </button>
+            <button 
+              onClick={() => setActiveTab('inactive')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                activeTab === 'inactive' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Archive ({applications.filter(a => !activeStatuses.includes(a.status)).length})
+            </button>
+          </div>
+        </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger
             render={
@@ -229,7 +261,7 @@ const Applications = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {applications.map((app) => (
+              {filteredApps.map((app) => (
                 <TableRow key={app.id}>
                   <TableCell className="font-medium">{app.jobTitle}</TableCell>
                   <TableCell>{app.company}</TableCell>
@@ -288,10 +320,12 @@ const Applications = () => {
                   </TableCell>
                 </TableRow>
               ))}
-              {applications.length === 0 && (
+              {filteredApps.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-12 text-slate-500">
-                    No applications found. Add your first one to get started!
+                    {activeTab === 'active' 
+                      ? "No active applications. Add your first one to get started!" 
+                      : "No archived applications."}
                   </TableCell>
                 </TableRow>
               )}
@@ -374,16 +408,16 @@ const Applications = () => {
 
       {/* Tailored Resume Dialog */}
       <Dialog open={!!viewingResume} onOpenChange={() => setViewingResume(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="p-6 bg-white border-b shrink-0">
             <DialogTitle>Tailored Resume for {viewingResume?.jobTitle} at {viewingResume?.company}</DialogTitle>
           </DialogHeader>
-          <div className="mt-4 p-8 border rounded-lg bg-white shadow-inner">
+          <div className="flex-1 overflow-y-auto bg-slate-100">
             {viewingResume?.tailoredResume && (
-              <ResumePreview data={viewingResume.tailoredResume} />
+              <ResumePreview data={viewingResume.tailoredResume} paper />
             )}
           </div>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2 p-6 bg-white border-t shrink-0">
             <Button variant="outline" onClick={() => toast.info('Export to PDF coming soon!')}>
               Download PDF
             </Button>

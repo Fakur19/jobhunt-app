@@ -4,11 +4,12 @@ import { Mail, Phone, MapPin, User } from 'lucide-react';
 
 interface ResumePreviewProps {
   data: ResumeData;
+  paper?: boolean;
 }
 
-export const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
-  return (
-    <div className="max-w-[800px] mx-auto space-y-8 font-serif text-slate-900">
+export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => {
+  const content = (
+    <div className="mx-auto space-y-8 font-serif text-slate-900">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div className="space-y-2">
@@ -84,6 +85,22 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+
+  if (paper) {
+    return (
+      <div className="w-full bg-slate-200 p-4 sm:p-8 flex justify-center overflow-auto min-h-full">
+        <div className="w-full max-w-[1100px] bg-white shadow-2xl border border-slate-200 min-h-[11in] p-[0.5in] sm:p-[0.75in] relative flex flex-col">
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-[800px] mx-auto">
+      {content}
     </div>
   );
 };
