@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useJob } from '../context/JobContext';
-import { refineResume } from '../services/ai';
+import { refineResume, parseResume } from '../services/ai';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,9 +20,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ResumePreview } from '../components/ResumePreview';
+
 const ResumeBuilder = () => {
   const { resume, updateResume } = useJob();
   const [isRefining, setIsRefining] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
 
   const handleAddExperience = () => {
     updateResume({
@@ -79,14 +82,23 @@ const ResumeBuilder = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      toast.info('Simulating resume parsing...');
-      // In a real app, you'd use a library to parse PDF/Docx
-      setTimeout(() => {
-        toast.success('Resume parsed and imported!');
-      }, 1500);
+      setIsParsing(true);
+      const toastId = toast.loading('AI is parsing your resume...');
+      try {
+        const parsedData = await parseResume(file);
+        updateResume(parsedData);
+        toast.success('Resume parsed and imported successfully!', { id: toastId });
+      } catch (error) {
+        console.error("Parsing error:", error);
+        toast.error('Failed to parse resume. Please try a different file format.', { id: toastId });
+      } finally {
+        setIsParsing(false);
+        // Reset input
+        e.target.value = '';
+      }
     }
   };
 
@@ -97,9 +109,9 @@ const ResumeBuilder = () => {
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">Resume Details</h3>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => document.getElementById('resume-upload')?.click()}>
-              <Upload className="w-4 h-4" />
-              Import
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => document.getElementById('resume-upload')?.click()} disabled={isParsing}>
+              {isParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {isParsing ? 'Parsing...' : 'Import'}
               <input 
                 id="resume-upload" 
                 type="file" 
@@ -108,7 +120,7 @@ const ResumeBuilder = () => {
                 onChange={handleFileUpload}
               />
             </Button>
-            <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={handleRefine} disabled={isRefining}>
+            <Button size="sm" className="gap-2 bg-purple-600 hover:bg-purple-700" onClick={handleRefine} disabled={isRefining || isParsing}>
               {isRefining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               AI Refine
             </Button>
@@ -298,83 +310,7 @@ const ResumeBuilder = () => {
         </div>
         
         <div className="flex-1 overflow-y-auto p-12 font-serif text-slate-900 bg-white">
-          <div className="max-w-[800px] mx-auto space-y-8">
-            {/* Header */}
-            <div className="flex justify-between items-start">
-              <div className="space-y-2">
-                <h1 className="text-4xl font-bold tracking-tight">{resume.name || 'Your Name'}</h1>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
-                  {resume.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {resume.email}</span>}
-                  {resume.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {resume.phone}</span>}
-                  {resume.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {resume.location}</span>}
-                </div>
-              </div>
-              <div className="w-24 h-24 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
-                {resume.headshotUrl ? (
-                  <img src={resume.headshotUrl} alt="Headshot" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <User className="w-12 h-12 text-slate-300" />
-                )}
-              </div>
-            </div>
-
-            {/* Summary */}
-            {resume.summary && (
-              <div className="space-y-2">
-                <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Professional Summary</h2>
-                <p className="text-sm leading-relaxed text-slate-700">{resume.summary}</p>
-              </div>
-            )}
-
-            {/* Experience */}
-            {resume.experience.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Experience</h2>
-                <div className="space-y-6">
-                  {resume.experience.map((exp, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between items-baseline">
-                        <h3 className="font-bold">{exp.role}</h3>
-                        <span className="text-xs text-slate-500 italic">{exp.dates}</span>
-                      </div>
-                      <p className="text-sm font-medium text-slate-600">{exp.company}</p>
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap mt-2">{exp.responsibilities}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Education */}
-            {resume.education.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Education</h2>
-                <div className="space-y-4">
-                  {resume.education.map((edu, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex justify-between items-baseline">
-                        <h3 className="font-bold">{edu.degree}</h3>
-                        <span className="text-xs text-slate-500 italic">{edu.dates}</span>
-                      </div>
-                      <p className="text-sm text-slate-600">{edu.school}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Skills */}
-            {resume.skills.length > 0 && (
-              <div className="space-y-2">
-                <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Skills</h2>
-                <div className="flex flex-wrap gap-2">
-                  {resume.skills.map((skill, i) => (
-                    <span key={i} className="text-sm text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{skill}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <ResumePreview data={resume} />
         </div>
       </div>
     </div>

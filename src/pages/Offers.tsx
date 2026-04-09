@@ -52,7 +52,7 @@ const Offers = () => {
     
     try {
       const cheatSheet = await generateInterviewCheatSheet(formData.jobTitle, formData.company, formData.notes);
-      addOffer({ ...formData, cheatSheet });
+      await addOffer({ ...formData, cheatSheet });
       toast.success('Offer/Invite added and interview cheat sheet generated!');
       setIsAdding(false);
       setFormData({
@@ -65,7 +65,7 @@ const Offers = () => {
       });
     } catch (error) {
       toast.error('Failed to generate cheat sheet, but record was saved.');
-      addOffer(formData);
+      await addOffer(formData);
       setIsAdding(false);
     } finally {
       setIsGenerating(false);
@@ -77,12 +77,14 @@ const Offers = () => {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-slate-900">Invitations & Offers</h3>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
-          <DialogTrigger>
-            <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="w-4 h-4" />
-              Add Invite/Offer
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger
+            render={
+              <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4" />
+                Add Invite/Offer
+              </Button>
+            }
+          />
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>New Invitation or Offer</DialogTitle>

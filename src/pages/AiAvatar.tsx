@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useJob } from '../context/JobContext';
+import { generateAvatar } from '../services/ai';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,21 +33,24 @@ const AiAvatar = () => {
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!originalImage) {
       toast.error('Please upload a photo first.');
       return;
     }
 
     setIsGenerating(true);
-    // Simulate AI image generation
-    setTimeout(() => {
-      // Using a high-quality placeholder that looks like a professional headshot
-      const placeholderHeadshot = `https://picsum.photos/seed/${Math.random()}/400/400`;
-      setGeneratedImage(placeholderHeadshot);
-      setIsGenerating(false);
+    try {
+      const result = await generateAvatar(originalImage, style);
+      setGeneratedImage(result);
       toast.success('Professional headshot generated!');
-    }, 3000);
+    } catch (error: any) {
+      console.error("Avatar generation error:", error);
+      const message = error.message || 'Failed to generate headshot.';
+      toast.error(`${message} Please try again.`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleAttach = () => {

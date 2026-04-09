@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useJob } from '../context/JobContext';
-import { generateCoverLetter } from '../services/ai';
+import { generateCoverLetter, generateTailoredResume } from '../services/ai';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,15 +27,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, Loader2, Eye } from 'lucide-react';
+import { FileText, Plus, Loader2, Eye, Edit2, Sparkles, FileUser } from 'lucide-react';
 import { toast } from 'sonner';
-import { ApplicationStatus } from '../types';
+import { ApplicationStatus, Application } from '../types';
+import { ResumePreview } from '../components/ResumePreview';
 
 const Applications = () => {
-  const { applications, addApplication, resume } = useJob();
+  const { applications, addApplication, updateApplication, resume } = useJob();
   const [isAdding, setIsAdding] = useState(false);
+  const [editingApp, setEditingApp] = useState<Application | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedApp, setSelectedApp] = useState<any>(null);
+  const [isTailoring, setIsTailoring] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [viewingResume, setViewingResume] = useState<Application | null>(null);
 
   const [formData, setFormData] = useState({
     jobTitle: '',
@@ -48,12 +52,23 @@ const Applications = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!resume.name || resume.experience.length === 0) {
+      toast.error('Please complete your base resume in the Resume Builder first.');
+      return;
+    }
+
     setIsGenerating(true);
     
     try {
-      const coverLetter = await generateCoverLetter(resume, formData.jobDescription);
-      addApplication({ ...formData, coverLetter });
-      toast.success('Application added and cover letter generated!');
+      // Generate both assets in parallel for efficiency
+      const [coverLetter, tailoredResume] = await Promise.all([
+        generateCoverLetter(resume, formData.jobTitle, formData.company, formData.jobDescription),
+        generateTailoredResume(resume, formData.jobDescription)
+      ]);
+
+      addApplication({ ...formData, coverLetter, tailoredResume });
+      toast.success('Application saved with AI-tailored resume and cover letter!');
       setIsAdding(false);
       setFormData({
         jobTitle: '',
@@ -64,11 +79,39 @@ const Applications = () => {
         jobDescription: '',
       });
     } catch (error) {
-      toast.error('Failed to generate cover letter, but application was saved.');
-      addApplication(formData);
+      console.error("AI Generation Error:", error);
+      toast.error('Failed to generate AI assets, but application was saved.');
+      await addApplication(formData);
       setIsAdding(false);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingApp) {
+      await updateApplication(editingApp.id, editingApp);
+      toast.success('Application updated!');
+      setEditingApp(null);
+    }
+  };
+
+  const handleTailorResume = async (app: Application) => {
+    if (!resume.name || resume.experience.length === 0) {
+      toast.error('Please fill in your base resume first (Name and at least one Experience).');
+      return;
+    }
+    setIsTailoring(true);
+    try {
+      const tailored = await generateTailoredResume(resume, app.jobDescription);
+      await updateApplication(app.id, { tailoredResume: tailored });
+      toast.success('Resume tailored for this job!');
+    } catch (error) {
+      console.error("Tailoring error:", error);
+      toast.error('Failed to tailor resume. Please check your internet connection and try again.');
+    } finally {
+      setIsTailoring(false);
     }
   };
 
@@ -77,12 +120,14 @@ const Applications = () => {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-slate-900">All Applications</h3>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
-          <DialogTrigger>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Application
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger
+            render={
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Application
+              </Button>
+            }
+          />
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>New Job Application</DialogTitle>
@@ -142,6 +187,7 @@ const Applications = () => {
                     <SelectItem value="Interviewing">Interviewing</SelectItem>
                     <SelectItem value="Rejected">Rejected</SelectItem>
                     <SelectItem value="Offer">Offer</SelectItem>
+                    <SelectItem value="Hired">Hired</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -159,10 +205,10 @@ const Applications = () => {
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Generating Cover Letter...
+                    Generating AI Assets...
                   </>
                 ) : (
-                  'Save Application'
+                  'Save & Tailor with AI'
                 )}
               </Button>
             </form>
@@ -190,24 +236,55 @@ const Applications = () => {
                   <TableCell>{app.date}</TableCell>
                   <TableCell>
                     <div className={`inline-flex px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      app.status === 'Offer' ? 'bg-emerald-100 text-emerald-700' :
+                      app.status === 'Hired' ? 'bg-emerald-100 text-emerald-700' :
+                      app.status === 'Offer' ? 'bg-blue-100 text-blue-700' :
                       app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                      app.status === 'Interviewing' ? 'bg-blue-100 text-blue-700' :
+                      app.status === 'Interviewing' ? 'bg-amber-100 text-amber-700' :
                       'bg-slate-100 text-slate-700'
                     }`}>
                       {app.status}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="gap-2"
-                      onClick={() => setSelectedApp(app)}
-                    >
-                      <Eye className="w-4 h-4" />
-                      View Letter
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setEditingApp(app)}
+                        title="Edit Application"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setSelectedApp(app)}
+                        title="View Cover Letter"
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                      {app.tailoredResume ? (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setViewingResume(app)}
+                          title="View Tailored Resume"
+                          className="text-purple-600"
+                        >
+                          <FileUser className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleTailorResume(app)}
+                          disabled={isTailoring}
+                          title="Tailor Resume with AI"
+                        >
+                          {isTailoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -223,6 +300,58 @@ const Applications = () => {
         </CardContent>
       </Card>
 
+      {/* Edit Dialog */}
+      <Dialog open={!!editingApp} onOpenChange={() => setEditingApp(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Application</DialogTitle>
+          </DialogHeader>
+          {editingApp && (
+            <form onSubmit={handleUpdate} className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Job Title</label>
+                  <Input 
+                    required 
+                    value={editingApp.jobTitle}
+                    onChange={e => setEditingApp(prev => prev ? ({ ...prev, jobTitle: e.target.value }) : null)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Company</label>
+                  <Input 
+                    required 
+                    value={editingApp.company}
+                    onChange={e => setEditingApp(prev => prev ? ({ ...prev, company: e.target.value }) : null)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select 
+                  value={editingApp.status} 
+                  onValueChange={(v: ApplicationStatus) => setEditingApp(prev => prev ? ({ ...prev, status: v }) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Applied">Applied</SelectItem>
+                    <SelectItem value="Interviewing">Interviewing</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                    <SelectItem value="Offer">Offer</SelectItem>
+                    <SelectItem value="Hired">Hired</SelectItem>
+                    <SelectItem value="Withdrawn">Withdrawn</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full">Update Application</Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cover Letter Dialog */}
       <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -239,6 +368,26 @@ const Applications = () => {
               Copy to Clipboard
             </Button>
             <Button onClick={() => setSelectedApp(null)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tailored Resume Dialog */}
+      <Dialog open={!!viewingResume} onOpenChange={() => setViewingResume(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Tailored Resume for {viewingResume?.jobTitle} at {viewingResume?.company}</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 p-8 border rounded-lg bg-white shadow-inner">
+            {viewingResume?.tailoredResume && (
+              <ResumePreview data={viewingResume.tailoredResume} />
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => toast.info('Export to PDF coming soon!')}>
+              Download PDF
+            </Button>
+            <Button onClick={() => setViewingResume(null)}>Close</Button>
           </div>
         </DialogContent>
       </Dialog>

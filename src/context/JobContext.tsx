@@ -1,14 +1,30 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  collection, 
+  onSnapshot, 
+  query, 
+  where, 
+  addDoc, 
+  updateDoc,
+  getDocFromServer
+} from 'firebase/firestore';
+import { auth, db, handleFirestoreError, OperationType } from '../firebase';
 import { Application, Offer, ResumeData } from '../types';
 
 interface JobContextType {
+  user: User | null;
+  isAuthReady: boolean;
   applications: Application[];
-  addApplication: (app: Omit<Application, 'id'>) => void;
-  updateApplication: (id: string, app: Partial<Application>) => void;
+  addApplication: (app: Omit<Application, 'id'>) => Promise<void>;
+  updateApplication: (id: string, app: Partial<Application>) => Promise<void>;
   offers: Offer[];
-  addOffer: (offer: Omit<Offer, 'id'>) => void;
+  addOffer: (offer: Omit<Offer, 'id'>) => Promise<void>;
   resume: ResumeData;
-  updateResume: (data: Partial<ResumeData>) => void;
+  updateResume: (data: Partial<ResumeData>) => Promise<void>;
 }
 
 const JobContext = createContext<JobContextType | undefined>(undefined);
@@ -25,54 +41,137 @@ const INITIAL_RESUME: ResumeData = {
 };
 
 export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // In a real app, these would be fetched from a database (e.g., Firestore)
-  const [applications, setApplications] = useState<Application[]>(() => {
-    const saved = localStorage.getItem('jobhunt_applications');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [resume, setResume] = useState<ResumeData>(INITIAL_RESUME);
 
-  const [offers, setOffers] = useState<Offer[]>(() => {
-    const saved = localStorage.getItem('jobhunt_offers');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [resume, setResume] = useState<ResumeData>(() => {
-    const saved = localStorage.getItem('jobhunt_resume');
-    return saved ? JSON.parse(saved) : INITIAL_RESUME;
-  });
+  // Test connection to Firestore
+  useEffect(() => {
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration. The client is offline.");
+        }
+      }
+    }
+    testConnection();
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem('jobhunt_applications', JSON.stringify(applications));
-  }, [applications]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsAuthReady(true);
+    });
+    return unsubscribe;
+  }, []);
 
+  // Sync Resume
   useEffect(() => {
-    localStorage.setItem('jobhunt_offers', JSON.stringify(offers));
-  }, [offers]);
+    if (!user) {
+      setResume(INITIAL_RESUME);
+      return;
+    }
 
+    const path = `users/${user.uid}`;
+    const unsubscribe = onSnapshot(doc(db, path), (docSnap) => {
+      if (docSnap.exists()) {
+        setResume(docSnap.data() as ResumeData);
+      } else {
+        setResume(INITIAL_RESUME);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, path);
+    });
+
+    return unsubscribe;
+  }, [user]);
+
+  // Sync Applications
   useEffect(() => {
-    localStorage.setItem('jobhunt_resume', JSON.stringify(resume));
-  }, [resume]);
+    if (!user) {
+      setApplications([]);
+      return;
+    }
 
-  const addApplication = (app: Omit<Application, 'id'>) => {
-    const newApp = { ...app, id: crypto.randomUUID() };
-    setApplications(prev => [newApp, ...prev]);
+    const path = 'applications';
+    const q = query(collection(db, path), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const apps = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Application));
+      setApplications(apps);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return unsubscribe;
+  }, [user]);
+
+  // Sync Offers
+  useEffect(() => {
+    if (!user) {
+      setOffers([]);
+      return;
+    }
+
+    const path = 'offers';
+    const q = query(collection(db, path), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const off = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Offer));
+      setOffers(off);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    });
+
+    return unsubscribe;
+  }, [user]);
+
+  const addApplication = async (app: Omit<Application, 'id'>) => {
+    if (!user) return;
+    const path = 'applications';
+    try {
+      await addDoc(collection(db, path), { ...app, userId: user.uid });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
   };
 
-  const updateApplication = (id: string, app: Partial<Application>) => {
-    setApplications(prev => prev.map(a => a.id === id ? { ...a, ...app } : a));
+  const updateApplication = async (id: string, app: Partial<Application>) => {
+    if (!user) return;
+    const path = `applications/${id}`;
+    try {
+      await updateDoc(doc(db, 'applications', id), app);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
   };
 
-  const addOffer = (offer: Omit<Offer, 'id'>) => {
-    const newOffer = { ...offer, id: crypto.randomUUID() };
-    setOffers(prev => [newOffer, ...prev]);
+  const addOffer = async (offer: Omit<Offer, 'id'>) => {
+    if (!user) return;
+    const path = 'offers';
+    try {
+      await addDoc(collection(db, path), { ...offer, userId: user.uid });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
   };
 
-  const updateResume = (data: Partial<ResumeData>) => {
-    setResume(prev => ({ ...prev, ...data }));
+  const updateResume = async (data: Partial<ResumeData>) => {
+    if (!user) return;
+    const path = `users/${user.uid}`;
+    try {
+      await setDoc(doc(db, 'users', user.uid), { ...resume, ...data }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
   };
 
   return (
     <JobContext.Provider value={{
+      user,
+      isAuthReady,
       applications,
       addApplication,
       updateApplication,

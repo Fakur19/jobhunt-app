@@ -1,4 +1,4 @@
-export type ApplicationStatus = 'Applied' | 'Interviewing' | 'Rejected' | 'Offer' | 'Withdrawn';
+export type ApplicationStatus = 'Applied' | 'Interviewing' | 'Rejected' | 'Offer' | 'Withdrawn' | 'Hired';
 
 export interface Application {
   id: string;
@@ -9,6 +9,7 @@ export interface Application {
   status: ApplicationStatus;
   jobDescription: string;
   coverLetter?: string;
+  tailoredResume?: ResumeData;
 }
 
 export interface Offer {
