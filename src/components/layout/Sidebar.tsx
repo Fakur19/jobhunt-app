@@ -37,8 +37,8 @@ export const Sidebar = () => {
             to={item.path}
             className={({ isActive }) => cn(
               "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
-              isActive 
-                ? "bg-blue-50 text-blue-700" 
+              isActive
+                ? "bg-blue-50 text-blue-700"
                 : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
             )}
           >
@@ -47,18 +47,6 @@ export const Sidebar = () => {
           </NavLink>
         ))}
       </nav>
-
-      <div className="p-4 border-t border-slate-200">
-        <div className="flex items-center gap-3 px-4 py-3 text-slate-500 text-sm">
-          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-            <UserCircle className="w-5 h-5" />
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <p className="font-medium text-slate-900 truncate">Demo User</p>
-            <p className="text-xs truncate">demo@example.com</p>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-};
+      </aside>
+      );
+      };
