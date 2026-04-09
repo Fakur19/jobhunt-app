@@ -36,7 +36,15 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     return (
       <div className="h-screen w-full flex bg-white overflow-hidden">
         {/* Left Side: Hero */}
-        <div className="flex-1 flex flex-col justify-center px-12 lg:px-24 bg-slate-50">
+        <div className="flex-1 flex flex-col justify-center px-12 lg:px-24 bg-slate-50 relative">
+          <div className="absolute top-12 left-12 lg:left-24">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                <Briefcase className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-slate-900 tracking-tight">JobHunt OS</span>
+            </div>
+          </div>
           <div className="max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider mb-6">
               <Sparkles className="w-3 h-3" />
