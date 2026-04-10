@@ -103,7 +103,7 @@ const AiAssistant = () => {
                     : "bg-slate-100 text-slate-800 rounded-tl-none prose prose-slate prose-sm max-w-none"
                 )}>
                   {m.role === 'assistant' ? (
-                    <ReactMarkdown className="markdown-content">{m.content}</ReactMarkdown>
+                    <ReactMarkdown>{m.content}</ReactMarkdown>
                   ) : (
                     m.content
                   )}

@@ -346,7 +346,7 @@ const Offers = () => {
           </DialogHeader>
           <div className="mt-4 prose prose-slate max-w-none text-sm sm:text-base">
             <div className="p-4 sm:p-6 bg-slate-50 rounded-lg">
-              <ReactMarkdown className="markdown-content">{selectedOffer?.cheatSheet || "No cheat sheet generated."}</ReactMarkdown>
+              <ReactMarkdown>{selectedOffer?.cheatSheet || "No cheat sheet generated."}</ReactMarkdown>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-end gap-2 mt-6">
