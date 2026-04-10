@@ -44,4 +44,9 @@ export interface ResumeData {
   }[];
   skills: string[];
   headshotUrl?: string;
+  headshotSettings?: {
+    scale: number;
+    x: number;
+    y: number;
+  };
 }

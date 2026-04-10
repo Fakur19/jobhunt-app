@@ -9,7 +9,7 @@ interface ResumePreviewProps {
 
 export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => {
   const content = (
-    <div className="mx-auto space-y-6 sm:space-y-8 font-serif text-slate-900">
+    <div className="space-y-6 sm:space-y-8 font-serif text-slate-900 p-[0.75in] bg-white">
       {/* Header */}
       <div className="flex flex-col-reverse sm:flex-row justify-between items-center sm:items-start gap-6">
         <div className="space-y-2 text-center sm:text-left">
@@ -22,7 +22,17 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => 
         </div>
         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
           {data.headshotUrl ? (
-            <img src={data.headshotUrl} alt="Headshot" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <div className="w-full h-full relative flex items-center justify-center">
+              <img 
+                src={data.headshotUrl} 
+                alt="Headshot" 
+                className="max-w-full max-h-full w-auto h-auto object-contain origin-center" 
+                style={{
+                  transform: `scale(${data.headshotSettings?.scale || 1}) translate(${data.headshotSettings?.x || 0}%, ${data.headshotSettings?.y || 0}%)`
+                }}
+                referrerPolicy="no-referrer" 
+              />
+            </div>
           ) : (
             <User className="w-10 h-10 sm:w-12 sm:h-12 text-slate-300" />
           )}
@@ -33,7 +43,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => 
       {data.summary && (
         <div className="space-y-2">
           <h2 className="text-base sm:text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Professional Summary</h2>
-          <p className="text-xs sm:text-sm leading-relaxed text-slate-700">{data.summary}</p>
+          <p className="text-xs sm:text-sm leading-relaxed text-slate-700 text-justify hyphens-auto">{data.summary}</p>
         </div>
       )}
 
@@ -49,7 +59,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => 
                   <span className="text-[10px] sm:text-xs text-slate-500 italic">{exp.dates}</span>
                 </div>
                 <p className="text-xs sm:text-sm font-medium text-slate-600">{exp.company}</p>
-                <p className="text-xs sm:text-sm text-slate-700 whitespace-pre-wrap mt-2 leading-relaxed">{exp.responsibilities}</p>
+                <p className="text-xs sm:text-sm text-slate-700 whitespace-pre-wrap mt-2 leading-relaxed text-justify hyphens-auto">{exp.responsibilities}</p>
               </div>
             ))}
           </div>
@@ -99,7 +109,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => 
   }
 
   return (
-    <div className="w-full max-w-[800px] mx-auto">
+    <div className="w-full">
       {content}
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useJob } from '../context/JobContext';
 import { refineResume, parseResume } from '../services/ai';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +12,11 @@ import {
   Download, 
   Upload, 
   Loader2,
-  Eye
+  Eye,
+  Camera,
+  X,
+  Move,
+  Maximize2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -20,8 +24,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 
 import { ResumePreview } from '../components/ResumePreview';
 
@@ -30,6 +35,9 @@ const ResumeBuilder = () => {
   const [isRefining, setIsRefining] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const desktopPreviewRef = useRef<HTMLDivElement>(null);
+  const mobilePreviewRef = useRef<HTMLDivElement>(null);
 
   const handleAddExperience = () => {
     updateResume({
@@ -105,6 +113,124 @@ const ResumeBuilder = () => {
     }
   };
 
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 600;
+          const MAX_HEIGHT = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(dataUrl);
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const toastId = toast.loading('Optimizing photo...');
+      try {
+        const compressedBase64 = await compressImage(file);
+        await updateResume({ 
+          headshotUrl: compressedBase64,
+          headshotSettings: { scale: 1, x: 0, y: 0 }
+        });
+        toast.success('Photo updated!', { id: toastId });
+      } catch (error) {
+        console.error('Photo optimization error:', error);
+        toast.error('Failed to process photo.', { id: toastId });
+      }
+    }
+  };
+
+  const handleUpdatePhotoSetting = (field: 'scale' | 'x' | 'y', value: number) => {
+    updateResume({
+      headshotSettings: {
+        ...(resume.headshotSettings || { scale: 1, x: 0, y: 0 }),
+        [field]: value
+      }
+    });
+  };
+
+  const handleExportPDF = async (ref: React.RefObject<HTMLDivElement | null>) => {
+    if (!ref.current) return;
+    
+    setIsExporting(true);
+    const toastId = toast.loading('Generating PDF...');
+    
+    try {
+      const originalElement = ref.current;
+      
+      // Use toPng from html-to-image as it handles modern CSS (like oklch) much better than html2canvas
+      const dataUrl = await toPng(originalElement, { 
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        // Ensure fonts and styles are fully loaded
+        skipAutoScale: true,
+        cacheBust: true,
+      });
+      
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'pt',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calculate image dimensions to fit on A4 while maintaining aspect ratio
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise(resolve => img.onload = resolve);
+      
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      
+      const finalWidth = imgWidth * ratio;
+      const finalHeight = imgHeight * ratio;
+      const imgX = (pdfWidth - finalWidth) / 2;
+      const imgY = Math.max(0, (pdfHeight - finalHeight) / 2);
+      
+      pdf.addImage(dataUrl, 'PNG', imgX, imgY, finalWidth, finalHeight);
+      pdf.save(`${resume.name || 'resume'}.pdf`);
+      toast.success('PDF downloaded!', { id: toastId });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error('Failed to generate PDF.', { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const ResumeForm = (
     <div className="space-y-6 pb-24 lg:pb-12">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -135,40 +261,124 @@ const ResumeBuilder = () => {
 
       <Card>
         <CardContent className="p-4 sm:p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Full Name</label>
-              <Input 
-                value={resume.name} 
-                onChange={e => updateResume({ name: e.target.value })}
-                placeholder="John Doe" 
-              />
+          <div className="flex flex-col sm:flex-row gap-6 items-start">
+            <div className="shrink-0 mx-auto sm:mx-0">
+              <div className="relative group">
+                <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl bg-slate-100 border-2 border-dashed border-slate-200 overflow-hidden flex items-center justify-center relative">
+                  {resume.headshotUrl ? (
+                    <div className="w-full h-full relative">
+                      <img 
+                        src={resume.headshotUrl} 
+                        alt="Headshot" 
+                        className="absolute w-full h-full object-contain origin-center" 
+                        style={{
+                          transform: `scale(${resume.headshotSettings?.scale || 1}) translate(${resume.headshotSettings?.x || 0}%, ${resume.headshotSettings?.y || 0}%)`
+                        }}
+                      />
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateResume({ headshotUrl: '', headshotSettings: { scale: 1, x: 0, y: 0 } });
+                        }}
+                        className="absolute top-1 right-1 p-1 bg-white/80 rounded-full text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1 text-slate-400">
+                      <Camera className="w-6 h-6" />
+                      <span className="text-[10px] font-medium">Add Photo</span>
+                    </div>
+                  )}
+                  <input 
+                    type="file" 
+                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                  />
+                </div>
+              </div>
+
+              {resume.headshotUrl && (
+                <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-3 w-full sm:w-32">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Maximize2 className="w-3 h-3" /> Zoom
+                    </label>
+                    <input 
+                      type="range" 
+                      min="0.1" max="3" step="0.1"
+                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      value={resume.headshotSettings?.scale || 1}
+                      onChange={(e) => handleUpdatePhotoSetting('scale', parseFloat(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Move className="w-3 h-3" /> Position X
+                    </label>
+                    <input 
+                      type="range" 
+                      min="-100" max="100" step="1"
+                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      value={resume.headshotSettings?.x || 0}
+                      onChange={(e) => handleUpdatePhotoSetting('x', parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1">
+                      <Move className="w-3 h-3" /> Position Y
+                    </label>
+                    <input 
+                      type="range" 
+                      min="-100" max="100" step="1"
+                      className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                      value={resume.headshotSettings?.y || 0}
+                      onChange={(e) => handleUpdatePhotoSetting('y', parseInt(e.target.value))}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Email</label>
-              <Input 
-                value={resume.email} 
-                onChange={e => updateResume({ email: e.target.value })}
-                placeholder="john@example.com" 
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Phone</label>
-              <Input 
-                value={resume.phone} 
-                onChange={e => updateResume({ phone: e.target.value })}
-                placeholder="+1 234 567 890" 
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Location</label>
-              <Input 
-                value={resume.location} 
-                onChange={e => updateResume({ location: e.target.value })}
-                placeholder="New York, NY" 
-              />
+            
+            <div className="flex-1 w-full space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Full Name</label>
+                  <Input 
+                    value={resume.name} 
+                    onChange={e => updateResume({ name: e.target.value })}
+                    placeholder="John Doe" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Email</label>
+                  <Input 
+                    value={resume.email} 
+                    onChange={e => updateResume({ email: e.target.value })}
+                    placeholder="john@example.com" 
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Phone</label>
+                  <Input 
+                    value={resume.phone} 
+                    onChange={e => updateResume({ phone: e.target.value })}
+                    placeholder="+1 234 567 890" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Location</label>
+                  <Input 
+                    value={resume.location} 
+                    onChange={e => updateResume({ location: e.target.value })}
+                    placeholder="New York, NY" 
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <div className="space-y-2">
@@ -317,14 +527,22 @@ const ResumeBuilder = () => {
       <div className="hidden lg:flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden sticky top-0 h-[calc(100vh-12rem)]">
         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live Preview</span>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Export to PDF coming soon!')}>
-            <Download className="w-4 h-4" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="gap-2" 
+            onClick={() => handleExportPDF(desktopPreviewRef)}
+            disabled={isExporting}
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Export PDF
           </Button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-8 bg-white">
-          <ResumePreview data={resume} />
+          <div ref={desktopPreviewRef}>
+            <ResumePreview data={resume} />
+          </div>
         </div>
       </div>
 
@@ -335,10 +553,18 @@ const ResumeBuilder = () => {
             <DialogTitle>Resume Preview</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto bg-slate-100">
-            <ResumePreview data={resume} paper />
+            <div ref={mobilePreviewRef}>
+              <ResumePreview data={resume} paper />
+            </div>
           </div>
           <div className="p-4 border-t bg-white flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => toast.info('Export coming soon!')}>
+            <Button 
+              variant="outline" 
+              className="flex-1 gap-2" 
+              onClick={() => handleExportPDF(mobilePreviewRef)}
+              disabled={isExporting}
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               Download PDF
             </Button>
             <Button className="flex-1" onClick={() => setIsPreviewOpen(false)}>Close</Button>
