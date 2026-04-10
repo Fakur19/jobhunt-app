@@ -9,22 +9,22 @@ interface ResumePreviewProps {
 
 export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => {
   const content = (
-    <div className="mx-auto space-y-8 font-serif text-slate-900">
+    <div className="mx-auto space-y-6 sm:space-y-8 font-serif text-slate-900">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">{data.name || 'Your Name'}</h1>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+      <div className="flex flex-col-reverse sm:flex-row justify-between items-center sm:items-start gap-6">
+        <div className="space-y-2 text-center sm:text-left">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{data.name || 'Your Name'}</h1>
+          <div className="flex flex-wrap justify-center sm:justify-start gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600">
             {data.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {data.email}</span>}
             {data.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {data.phone}</span>}
             {data.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {data.location}</span>}
           </div>
         </div>
-        <div className="w-24 h-24 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
           {data.headshotUrl ? (
             <img src={data.headshotUrl} alt="Headshot" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
-            <User className="w-12 h-12 text-slate-300" />
+            <User className="w-10 h-10 sm:w-12 sm:h-12 text-slate-300" />
           )}
         </div>
       </div>
@@ -32,24 +32,24 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => 
       {/* Summary */}
       {data.summary && (
         <div className="space-y-2">
-          <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Professional Summary</h2>
-          <p className="text-sm leading-relaxed text-slate-700">{data.summary}</p>
+          <h2 className="text-base sm:text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Professional Summary</h2>
+          <p className="text-xs sm:text-sm leading-relaxed text-slate-700">{data.summary}</p>
         </div>
       )}
 
       {/* Experience */}
       {data.experience.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Experience</h2>
+          <h2 className="text-base sm:text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Experience</h2>
           <div className="space-y-6">
             {data.experience.map((exp, i) => (
               <div key={i} className="space-y-1">
-                <div className="flex justify-between items-baseline">
-                  <h3 className="font-bold">{exp.role}</h3>
-                  <span className="text-xs text-slate-500 italic">{exp.dates}</span>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
+                  <h3 className="font-bold text-sm sm:text-base">{exp.role}</h3>
+                  <span className="text-[10px] sm:text-xs text-slate-500 italic">{exp.dates}</span>
                 </div>
-                <p className="text-sm font-medium text-slate-600">{exp.company}</p>
-                <p className="text-sm text-slate-700 whitespace-pre-wrap mt-2">{exp.responsibilities}</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-600">{exp.company}</p>
+                <p className="text-xs sm:text-sm text-slate-700 whitespace-pre-wrap mt-2 leading-relaxed">{exp.responsibilities}</p>
               </div>
             ))}
           </div>
@@ -59,15 +59,15 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => 
       {/* Education */}
       {data.education.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Education</h2>
+          <h2 className="text-base sm:text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Education</h2>
           <div className="space-y-4">
             {data.education.map((edu, i) => (
               <div key={i} className="space-y-1">
-                <div className="flex justify-between items-baseline">
-                  <h3 className="font-bold">{edu.degree}</h3>
-                  <span className="text-xs text-slate-500 italic">{edu.dates}</span>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-baseline gap-1">
+                  <h3 className="font-bold text-sm sm:text-base">{edu.degree}</h3>
+                  <span className="text-[10px] sm:text-xs text-slate-500 italic">{edu.dates}</span>
                 </div>
-                <p className="text-sm text-slate-600">{edu.school}</p>
+                <p className="text-xs sm:text-sm text-slate-600">{edu.school}</p>
               </div>
             ))}
           </div>
@@ -77,10 +77,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, paper }) => 
       {/* Skills */}
       {data.skills.length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Skills</h2>
+          <h2 className="text-base sm:text-lg font-bold uppercase tracking-widest text-blue-700 border-b border-blue-100 pb-1">Skills</h2>
           <div className="flex flex-wrap gap-2">
             {data.skills.map((skill, i) => (
-              <span key={i} className="text-sm text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{skill}</span>
+              <span key={i} className="text-xs sm:text-sm text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{skill}</span>
             ))}
           </div>
         </div>

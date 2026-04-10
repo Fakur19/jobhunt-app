@@ -4,7 +4,6 @@ import { chatWithAssistant } from '../services/ai';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   MessageSquare, 
   Send, 
@@ -69,42 +68,42 @@ const AiAssistant = () => {
   };
 
   const suggestions = [
-    "Summarize my current applications",
-    "How can I improve my resume skills?",
-    "Help me prepare for an interview",
-    "What patterns do you see in my search?"
+    "Summarize my applications",
+    "Improve my resume skills",
+    "Interview preparation tips",
+    "Job search patterns"
   ];
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-12rem)] flex flex-col gap-6">
-      <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardHeader className="border-b bg-slate-50/50 py-4">
-          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+    <div className="max-w-4xl mx-auto flex flex-col gap-6 h-[calc(100vh-8rem)] lg:h-[calc(100vh-12rem)] pb-4">
+      <Card className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <CardHeader className="border-b bg-slate-50/50 py-3 sm:py-4 px-4 sm:px-6 shrink-0">
+          <CardTitle className="text-base sm:text-lg font-semibold flex items-center gap-2">
             <Bot className="w-5 h-5 text-blue-600" />
             AI Job Companion
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden p-0 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-6 space-y-6" ref={scrollRef}>
+        <CardContent className="flex-1 overflow-hidden p-0 flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-200" ref={scrollRef}>
             {messages.map((m, i) => (
               <div key={i} className={cn(
-                "flex gap-4 max-w-[85%]",
+                "flex gap-3 sm:gap-4 max-w-[95%] sm:max-w-[85%]",
                 m.role === 'user' ? "ml-auto flex-row-reverse" : "mr-auto"
               )}>
                 <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                  "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 mt-1",
                   m.role === 'user' ? "bg-blue-600" : "bg-slate-100"
                 )}>
-                  {m.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-slate-600" />}
+                  {m.role === 'user' ? <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" /> : <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />}
                 </div>
                 <div className={cn(
-                  "p-4 rounded-2xl text-sm leading-relaxed",
+                  "p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm",
                   m.role === 'user' 
                     ? "bg-blue-600 text-white rounded-tr-none" 
                     : "bg-slate-100 text-slate-800 rounded-tl-none prose prose-slate prose-sm max-w-none"
                 )}>
                   {m.role === 'assistant' ? (
-                    <ReactMarkdown>{m.content}</ReactMarkdown>
+                    <ReactMarkdown className="markdown-content">{m.content}</ReactMarkdown>
                   ) : (
                     m.content
                   )}
@@ -112,25 +111,25 @@ const AiAssistant = () => {
               </div>
             ))}
             {isLoading && (
-              <div className="flex gap-4 mr-auto">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4 text-slate-600" />
+              <div className="flex gap-3 sm:gap-4 mr-auto max-w-[90%]">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                  <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600" />
                 </div>
-                <div className="bg-slate-100 p-4 rounded-2xl rounded-tl-none flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                  <span className="text-sm text-slate-400">Thinking...</span>
+                <div className="bg-slate-100 p-3 rounded-2xl rounded-tl-none flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                  <span className="text-xs sm:text-sm text-slate-400 font-medium">Assistant is thinking...</span>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="p-4 border-t bg-white">
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
+          <div className="p-3 sm:p-4 border-t bg-white shrink-0">
+            <div className="flex gap-2 mb-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
               {suggestions.map((s) => (
                 <button
                   key={s}
                   onClick={() => setInput(s)}
-                  className="whitespace-nowrap px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-xs text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-colors"
+                  className="whitespace-nowrap px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[10px] sm:text-xs text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-colors shadow-sm"
                 >
                   {s}
                 </button>
@@ -141,37 +140,43 @@ const AiAssistant = () => {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleSend()}
-                placeholder="Ask me anything about your job search..." 
-                className="flex-1"
+                placeholder="Ask me anything..." 
+                className="flex-1 text-sm sm:text-base h-10 sm:h-12 focus-visible:ring-blue-500"
               />
-              <Button onClick={handleSend} disabled={isLoading || !input.trim()} className="bg-blue-600 hover:bg-blue-700">
-                <Send className="w-4 h-4" />
+              <Button onClick={handleSend} disabled={isLoading || !input.trim()} className="bg-blue-600 hover:bg-blue-700 w-10 sm:w-12 h-10 sm:h-12 p-0 shrink-0">
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="bg-purple-50 border-purple-100">
-          <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-600" />
-            <p className="text-xs font-medium text-purple-900">Context Aware</p>
-            <p className="text-[10px] text-purple-700">I know your current applications and skills.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pb-4">
+        <Card className="bg-purple-50 border-purple-100 shadow-none">
+          <CardContent className="p-3 flex items-start sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <p className="text-[10px] sm:text-xs font-bold text-purple-900 uppercase tracking-wider">Context Aware</p>
+              <p className="text-[9px] sm:text-[10px] text-purple-700 font-medium mt-0.5 sm:mt-0">Knows your applications & skills.</p>
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-blue-50 border-blue-100">
-          <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-            <MessageSquare className="w-5 h-5 text-blue-600" />
-            <p className="text-xs font-medium text-blue-900">Interview Prep</p>
-            <p className="text-[10px] text-blue-700">Ask for mock questions or company research.</p>
+        <Card className="bg-blue-50 border-blue-100 shadow-none">
+          <CardContent className="p-3 flex items-start sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
+            <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <p className="text-[10px] sm:text-xs font-bold text-blue-900 uppercase tracking-wider">Interview Prep</p>
+              <p className="text-[9px] sm:text-[10px] text-blue-700 font-medium mt-0.5 sm:mt-0">Mock questions & research.</p>
+            </div>
           </CardContent>
         </Card>
-        <Card className="bg-emerald-50 border-emerald-100">
-          <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-            <RefreshCcw className="w-5 h-5 text-emerald-600" />
-            <p className="text-xs font-medium text-emerald-900">Always Ready</p>
-            <p className="text-[10px] text-emerald-700">Available 24/7 to guide your career journey.</p>
+        <Card className="bg-emerald-50 border-emerald-100 shadow-none">
+          <CardContent className="p-3 flex items-start sm:flex-col sm:items-center text-left sm:text-center gap-3 sm:gap-2">
+            <RefreshCcw className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <p className="text-[10px] sm:text-xs font-bold text-emerald-900 uppercase tracking-wider">Always Ready</p>
+              <p className="text-[9px] sm:text-[10px] text-emerald-700 font-medium mt-0.5 sm:mt-0">Available 24/7 to guide you.</p>
+            </div>
           </CardContent>
         </Card>
       </div>

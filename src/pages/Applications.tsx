@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useJob } from '../context/JobContext';
 import { generateCoverLetter, generateTailoredResume } from '../services/ai';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, Loader2, Eye, Edit2, Sparkles, FileUser } from 'lucide-react';
+import { FileText, Plus, Loader2, Edit2, Sparkles, FileUser } from 'lucide-react';
 import { toast } from 'sonner';
 import { ApplicationStatus, Application } from '../types';
 import { ResumePreview } from '../components/ResumePreview';
@@ -69,7 +69,6 @@ const Applications = () => {
     setIsGenerating(true);
     
     try {
-      // Generate both assets in parallel for efficiency
       const [coverLetter, tailoredResume] = await Promise.all([
         generateCoverLetter(resume, formData.jobTitle, formData.company, formData.jobDescription),
         generateTailoredResume(resume, formData.jobDescription)
@@ -117,7 +116,7 @@ const Applications = () => {
       toast.success('Resume tailored for this job!');
     } catch (error) {
       console.error("Tailoring error:", error);
-      toast.error('Failed to tailor resume. Please check your internet connection and try again.');
+      toast.error('Failed to tailor resume.');
     } finally {
       setIsTailoring(false);
     }
@@ -125,47 +124,44 @@ const Applications = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-6">
-          <h3 className="text-lg font-semibold text-slate-900">Applications</h3>
-          <div className="flex bg-slate-100 p-1 rounded-lg">
-            <button 
-              onClick={() => setActiveTab('active')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                activeTab === 'active' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Active ({applications.filter(a => activeStatuses.includes(a.status)).length})
-            </button>
-            <button 
-              onClick={() => setActiveTab('inactive')}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
-                activeTab === 'inactive' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Archive ({applications.filter(a => !activeStatuses.includes(a.status)).length})
-            </button>
-          </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex bg-slate-100 p-1 rounded-lg w-full sm:w-auto">
+          <button 
+            onClick={() => setActiveTab('active')}
+            className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+              activeTab === 'active' 
+                ? 'bg-white text-blue-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Active ({applications.filter(a => activeStatuses.includes(a.status)).length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('inactive')}
+            className={`flex-1 sm:flex-none px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+              activeTab === 'inactive' 
+                ? 'bg-white text-blue-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            Archive ({applications.filter(a => !activeStatuses.includes(a.status)).length})
+          </button>
         </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger
             render={
-              <Button className="gap-2">
+              <Button className="gap-2 w-full sm:w-auto">
                 <Plus className="w-4 h-4" />
                 Add Application
               </Button>
             }
           />
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl w-[95vw] max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>New Job Application</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Job Title</label>
                   <Input 
@@ -185,7 +181,7 @@ const Applications = () => {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Location</label>
                   <Input 
@@ -233,7 +229,7 @@ const Applications = () => {
                   placeholder="Paste the full job description here..." 
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isGenerating}>
+              <Button type="submit" className="w-full h-12" disabled={isGenerating}>
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -250,99 +246,143 @@ const Applications = () => {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Job Title</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredApps.map((app) => (
-                <TableRow key={app.id}>
-                  <TableCell className="font-medium">{app.jobTitle}</TableCell>
-                  <TableCell>{app.company}</TableCell>
-                  <TableCell>{app.date}</TableCell>
-                  <TableCell>
-                    <div className={`inline-flex px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      app.status === 'Hired' ? 'bg-emerald-100 text-emerald-700' :
-                      app.status === 'Offer' ? 'bg-blue-100 text-blue-700' :
-                      app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                      app.status === 'Interviewing' ? 'bg-amber-100 text-amber-700' :
-                      'bg-slate-100 text-slate-700'
-                    }`}>
-                      {app.status}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setEditingApp(app)}
-                        title="Edit Application"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setSelectedApp(app)}
-                        title="View Cover Letter"
-                      >
-                        <FileText className="w-4 h-4" />
-                      </Button>
-                      {app.tailoredResume ? (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => setViewingResume(app)}
-                          title="View Tailored Resume"
-                          className="text-purple-600"
-                        >
-                          <FileUser className="w-4 h-4" />
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleTailorResume(app)}
-                          disabled={isTailoring}
-                          title="Tailor Resume with AI"
-                        >
-                          {isTailoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filteredApps.length === 0 && (
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-slate-500">
-                    {activeTab === 'active' 
-                      ? "No active applications. Add your first one to get started!" 
-                      : "No archived applications."}
-                  </TableCell>
+                  <TableHead className="pl-6">Job Title</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right pr-6">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredApps.map((app) => (
+                  <TableRow key={app.id}>
+                    <TableCell className="font-medium pl-6">{app.jobTitle}</TableCell>
+                    <TableCell>{app.company}</TableCell>
+                    <TableCell>{app.date}</TableCell>
+                    <TableCell>
+                      <div className={`inline-flex px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        app.status === 'Hired' ? 'bg-emerald-100 text-emerald-700' :
+                        app.status === 'Offer' ? 'bg-blue-100 text-blue-700' :
+                        app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                        app.status === 'Interviewing' ? 'bg-amber-100 text-amber-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {app.status}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      <div className="flex justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setEditingApp(app)}
+                          title="Edit Application"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setSelectedApp(app)}
+                          title="View Cover Letter"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                        {app.tailoredResume ? (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setViewingResume(app)}
+                            title="View Tailored Resume"
+                            className="text-purple-600"
+                          >
+                            <FileUser className="w-4 h-4" />
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleTailorResume(app)}
+                            disabled={isTailoring}
+                            title="Tailor Resume with AI"
+                          >
+                            {isTailoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {filteredApps.map((app) => (
+              <div key={app.id} className="p-4 space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900">{app.jobTitle}</h3>
+                    <p className="text-sm text-slate-500">{app.company}</p>
+                  </div>
+                  <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    app.status === 'Hired' ? 'bg-emerald-100 text-emerald-700' :
+                    app.status === 'Offer' ? 'bg-blue-100 text-blue-700' :
+                    app.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                    app.status === 'Interviewing' ? 'bg-amber-100 text-amber-700' :
+                    'bg-slate-100 text-slate-700'
+                  }`}>
+                    {app.status}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-400">Applied on {app.date}</span>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setEditingApp(app)}>
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setSelectedApp(app)}>
+                      <FileText className="w-3.5 h-3.5" />
+                    </Button>
+                    {app.tailoredResume ? (
+                      <Button variant="outline" size="icon" className="h-8 w-8 text-purple-600" onClick={() => setViewingResume(app)}>
+                        <FileUser className="w-3.5 h-3.5" />
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleTailorResume(app)} disabled={isTailoring}>
+                        {isTailoring ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {filteredApps.length === 0 && (
+            <div className="text-center py-12 text-slate-500 text-sm">
+              {activeTab === 'active' 
+                ? "No active applications. Add your first one to get started!" 
+                : "No archived applications."}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingApp} onOpenChange={() => setEditingApp(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Application</DialogTitle>
           </DialogHeader>
           {editingApp && (
             <form onSubmit={handleUpdate} className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Job Title</label>
                   <Input 
@@ -379,7 +419,7 @@ const Applications = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full">Update Application</Button>
+              <Button type="submit" className="w-full h-12">Update Application</Button>
             </form>
           )}
         </DialogContent>
@@ -387,21 +427,21 @@ const Applications = () => {
 
       {/* Cover Letter Dialog */}
       <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Cover Letter for {selectedApp?.jobTitle} at {selectedApp?.company}</DialogTitle>
           </DialogHeader>
-          <div className="mt-4 p-6 bg-slate-50 rounded-lg whitespace-pre-wrap font-serif text-slate-800 leading-relaxed">
+          <div className="mt-4 p-4 sm:p-6 bg-slate-50 rounded-lg whitespace-pre-wrap font-serif text-slate-800 leading-relaxed text-sm sm:text-base">
             {selectedApp?.coverLetter || "No cover letter generated for this application."}
           </div>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => {
               navigator.clipboard.writeText(selectedApp?.coverLetter || "");
               toast.success('Copied to clipboard!');
-            }}>
+            }} className="w-full sm:w-auto">
               Copy to Clipboard
             </Button>
-            <Button onClick={() => setSelectedApp(null)}>Close</Button>
+            <Button onClick={() => setSelectedApp(null)} className="w-full sm:w-auto">Close</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -409,19 +449,19 @@ const Applications = () => {
       {/* Tailored Resume Dialog */}
       <Dialog open={!!viewingResume} onOpenChange={() => setViewingResume(null)}>
         <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="p-6 bg-white border-b shrink-0">
-            <DialogTitle>Tailored Resume for {viewingResume?.jobTitle} at {viewingResume?.company}</DialogTitle>
+          <DialogHeader className="p-4 sm:p-6 bg-white border-b shrink-0">
+            <DialogTitle className="text-base sm:text-lg truncate pr-8">Tailored Resume for {viewingResume?.jobTitle}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto bg-slate-100">
             {viewingResume?.tailoredResume && (
               <ResumePreview data={viewingResume.tailoredResume} paper />
             )}
           </div>
-          <div className="flex justify-end gap-2 p-6 bg-white border-t shrink-0">
-            <Button variant="outline" onClick={() => toast.info('Export to PDF coming soon!')}>
+          <div className="flex justify-end gap-2 p-4 sm:p-6 bg-white border-t shrink-0">
+            <Button variant="outline" onClick={() => toast.info('Export to PDF coming soon!')} className="flex-1 sm:flex-none">
               Download PDF
             </Button>
-            <Button onClick={() => setViewingResume(null)}>Close</Button>
+            <Button onClick={() => setViewingResume(null)} className="flex-1 sm:flex-none">Close</Button>
           </div>
         </DialogContent>
       </Dialog>

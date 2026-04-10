@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useJob } from '../../context/JobContext';
 import { loginWithGoogle, logout } from '../../firebase';
 import { Button } from '@/components/ui/button';
-import { LogIn, LogOut, User } from 'lucide-react';
+import { LogIn, LogOut, User, Menu } from 'lucide-react';
 import { toast } from 'sonner';
 
 const pageInfo: Record<string, { title: string; description: string }> = {
@@ -15,7 +15,11 @@ const pageInfo: Record<string, { title: string; description: string }> = {
   '/assistant': { title: 'AI Assistant', description: 'Your personal job search companion' },
 };
 
-export const Topbar = () => {
+interface TopbarProps {
+  onMenuClick?: () => void;
+}
+
+export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const location = useLocation();
   const { user, isAuthReady } = useJob();
   const info = pageInfo[location.pathname] || { title: 'JobHunt OS', description: '' };
@@ -30,13 +34,21 @@ export const Topbar = () => {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center px-8 justify-between sticky top-0 z-10">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-900">{info.title}</h2>
-        <p className="text-sm text-slate-500">{info.description}</p>
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center px-4 lg:px-8 justify-between sticky top-0 z-10">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
+          <Menu className="w-5 h-5" />
+        </Button>
+        <div className="hidden sm:block">
+          <h2 className="text-xl font-semibold text-slate-900">{info.title}</h2>
+          <p className="text-sm text-slate-500 line-clamp-1">{info.description}</p>
+        </div>
+        <div className="sm:hidden font-bold text-slate-900">
+          {info.title}
+        </div>
       </div>
       
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {!isAuthReady ? (
           <div className="w-8 h-8 rounded-full bg-slate-100 animate-pulse" />
         ) : user ? (
